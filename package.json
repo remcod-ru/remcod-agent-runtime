@@ -1,0 +1,42 @@
+{
+  "name": "remcod-agent-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Provider-neutral runtime and harness for durable autonomous agents.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/remcod-ru/remcod-agent-runtime.git"
+  },
+  "homepage": "https://github.com/remcod-ru/remcod-agent-runtime#readme",
+  "bugs": {
+    "url": "https://github.com/remcod-ru/remcod-agent-runtime/issues"
+  },
+  "type": "module",
+  "packageManager": "pnpm@11.24.0",
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
+  "scripts": {
+    "format:check": "prettier --check \"**/*.{json,js,mjs,cjs,ts,tsx,md,yaml,yml}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test tests/*.test.mjs && vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "build": "pnpm -r --if-present run build",
+    "smoke:exports": "node scripts/smoke-exports.mjs",
+    "legal:licenses": "node scripts/check-governance.mjs --licenses",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm build && pnpm test && pnpm test:coverage && pnpm smoke:exports"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "10.9.1",
+    "prettier": "3.9.6",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11"
+  }
+}

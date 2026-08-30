@@ -1,0 +1,2806 @@
+{
+  "runtimeError": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "string",
+        "enum": [
+          "VALIDATION_FAILED",
+          "INVALID_TRANSITION",
+          "VERSION_CONFLICT",
+          "CURSOR_CONFLICT",
+          "PROVIDER_FAILED",
+          "TOOL_FAILED",
+          "POLICY_REQUIRED",
+          "BUDGET_EXCEEDED",
+          "CANCELLED",
+          "STRUCTURED_OUTPUT_INVALID",
+          "SCRIPT_EXHAUSTED"
+        ]
+      },
+      "message": {
+        "type": "string",
+        "minLength": 1
+      },
+      "retryable": {
+        "type": "boolean"
+      },
+      "details": {
+        "$ref": "#/$defs/__schema0"
+      }
+    },
+    "required": ["code", "message", "retryable"],
+    "additionalProperties": false,
+    "$defs": {
+      "__schema0": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/__schema0"
+            }
+          },
+          {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "session": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "protocolVersion": {
+        "type": "string",
+        "const": "1"
+      },
+      "agentId": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "idle",
+          "running",
+          "waiting_input",
+          "waiting_event",
+          "waiting_schedule",
+          "waiting_next_turn",
+          "completed",
+          "failed",
+          "cancelled"
+        ]
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+      },
+      "version": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "lastEventCursor": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      }
+    },
+    "required": [
+      "id",
+      "protocolVersion",
+      "agentId",
+      "status",
+      "createdAt",
+      "updatedAt",
+      "version",
+      "lastEventCursor"
+    ],
+    "additionalProperties": false
+  },
+  "turn": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "sessionId": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "running",
+          "waiting_input",
+          "completed",
+          "failed",
+          "cancelled"
+        ]
+      },
+      "input": {
+        "$ref": "#/$defs/__schema0"
+      },
+      "output": {
+        "$ref": "#/$defs/__schema0"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+      }
+    },
+    "required": [
+      "id",
+      "sessionId",
+      "status",
+      "input",
+      "createdAt",
+      "updatedAt"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+      "__schema0": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/__schema0"
+            }
+          },
+          {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "step": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "sessionId": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "turnId": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "index": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "kind": {
+        "type": "string",
+        "enum": ["model", "tool", "compaction"]
+      },
+      "status": {
+        "type": "string",
+        "enum": ["pending", "running", "completed", "failed", "cancelled"]
+      },
+      "startedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+      },
+      "completedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+      },
+      "error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "VALIDATION_FAILED",
+              "INVALID_TRANSITION",
+              "VERSION_CONFLICT",
+              "CURSOR_CONFLICT",
+              "PROVIDER_FAILED",
+              "TOOL_FAILED",
+              "POLICY_REQUIRED",
+              "BUDGET_EXCEEDED",
+              "CANCELLED",
+              "STRUCTURED_OUTPUT_INVALID",
+              "SCRIPT_EXHAUSTED"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "details": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        "required": ["code", "message", "retryable"],
+        "additionalProperties": false
+      }
+    },
+    "required": ["id", "sessionId", "turnId", "index", "kind", "status"],
+    "additionalProperties": false,
+    "$defs": {
+      "__schema0": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/__schema0"
+            }
+          },
+          {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "runtimeEvent": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "session.created"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "session": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  "protocolVersion": {
+                    "type": "string",
+                    "const": "1"
+                  },
+                  "agentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "idle",
+                      "running",
+                      "waiting_input",
+                      "waiting_event",
+                      "waiting_schedule",
+                      "waiting_next_turn",
+                      "completed",
+                      "failed",
+                      "cancelled"
+                    ]
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "lastEventCursor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "id",
+                  "protocolVersion",
+                  "agentId",
+                  "status",
+                  "createdAt",
+                  "updatedAt",
+                  "version",
+                  "lastEventCursor"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": ["session"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "session.status_changed"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "idle"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "idle"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "cancelled"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "waiting_input"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "waiting_event"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "waiting_schedule"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "waiting_next_turn"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "completed"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "failed"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "cancelled"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "waiting_input"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "waiting_input"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "cancelled"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "waiting_event"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "waiting_event"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "cancelled"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "waiting_schedule"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "waiting_schedule"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "cancelled"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "waiting_next_turn"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "waiting_next_turn"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "completed"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "waiting_next_turn"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "cancelled"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "turn.created"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "turn": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  "sessionId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "queued",
+                      "running",
+                      "waiting_input",
+                      "completed",
+                      "failed",
+                      "cancelled"
+                    ]
+                  },
+                  "input": {
+                    "$ref": "#/$defs/__schema0"
+                  },
+                  "output": {
+                    "$ref": "#/$defs/__schema0"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  }
+                },
+                "required": [
+                  "id",
+                  "sessionId",
+                  "status",
+                  "input",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": ["turn"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "turn.status_changed"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "queued"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "waiting_input"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "completed"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "failed"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "cancelled"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "waiting_input"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "running"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "const": "waiting_input"
+                  },
+                  "to": {
+                    "type": "string",
+                    "const": "cancelled"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "step.started"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "step": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  "sessionId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  "turnId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  "index": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": ["model", "tool", "compaction"]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "running",
+                      "completed",
+                      "failed",
+                      "cancelled"
+                    ]
+                  },
+                  "startedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "completedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "error": {
+                    "type": "object",
+                    "properties": {
+                      "code": {
+                        "type": "string",
+                        "enum": [
+                          "VALIDATION_FAILED",
+                          "INVALID_TRANSITION",
+                          "VERSION_CONFLICT",
+                          "CURSOR_CONFLICT",
+                          "PROVIDER_FAILED",
+                          "TOOL_FAILED",
+                          "POLICY_REQUIRED",
+                          "BUDGET_EXCEEDED",
+                          "CANCELLED",
+                          "STRUCTURED_OUTPUT_INVALID",
+                          "SCRIPT_EXHAUSTED"
+                        ]
+                      },
+                      "message": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "retryable": {
+                        "type": "boolean"
+                      },
+                      "details": {
+                        "$ref": "#/$defs/__schema0"
+                      }
+                    },
+                    "required": ["code", "message", "retryable"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "sessionId",
+                  "turnId",
+                  "index",
+                  "kind",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": ["step"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "turnId",
+          "stepId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "step.completed"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "$ref": "#/$defs/__schema0"
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "inputTokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "outputTokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "totalTokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": ["inputTokens", "outputTokens", "totalTokens"],
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "turnId",
+          "stepId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "step.failed"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "error": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "enum": [
+                      "VALIDATION_FAILED",
+                      "INVALID_TRANSITION",
+                      "VERSION_CONFLICT",
+                      "CURSOR_CONFLICT",
+                      "PROVIDER_FAILED",
+                      "TOOL_FAILED",
+                      "POLICY_REQUIRED",
+                      "BUDGET_EXCEEDED",
+                      "CANCELLED",
+                      "STRUCTURED_OUTPUT_INVALID",
+                      "SCRIPT_EXHAUSTED"
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  },
+                  "details": {
+                    "$ref": "#/$defs/__schema0"
+                  }
+                },
+                "required": ["code", "message", "retryable"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["error"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "turnId",
+          "stepId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "step.cancelled"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "turnId",
+          "stepId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "model.requested"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "providerId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1
+              },
+              "attempt": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": ["providerId", "model", "attempt"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "model.completed"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "responseKind": {
+                "type": "string",
+                "enum": ["message", "tool_calls"]
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "inputTokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "outputTokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "totalTokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": ["inputTokens", "outputTokens", "totalTokens"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["responseKind", "usage"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "model.failed"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "error": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "enum": [
+                      "VALIDATION_FAILED",
+                      "INVALID_TRANSITION",
+                      "VERSION_CONFLICT",
+                      "CURSOR_CONFLICT",
+                      "PROVIDER_FAILED",
+                      "TOOL_FAILED",
+                      "POLICY_REQUIRED",
+                      "BUDGET_EXCEEDED",
+                      "CANCELLED",
+                      "STRUCTURED_OUTPUT_INVALID",
+                      "SCRIPT_EXHAUSTED"
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  },
+                  "details": {
+                    "$ref": "#/$defs/__schema0"
+                  }
+                },
+                "required": ["code", "message", "retryable"],
+                "additionalProperties": false
+              },
+              "attempt": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": ["error", "attempt"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "tool.requested"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "call": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "input": {
+                    "$ref": "#/$defs/__schema0"
+                  }
+                },
+                "required": ["id", "name", "input"],
+                "additionalProperties": false
+              },
+              "idempotencyKey": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": ["call", "idempotencyKey"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "tool.started"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "toolCallId": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "toolName": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": ["toolCallId", "toolName"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "tool.completed"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "toolCallId": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "output": {
+                "$ref": "#/$defs/__schema0"
+              }
+            },
+            "required": ["toolCallId", "output"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "tool.failed"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "toolCallId": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "error": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "enum": [
+                      "VALIDATION_FAILED",
+                      "INVALID_TRANSITION",
+                      "VERSION_CONFLICT",
+                      "CURSOR_CONFLICT",
+                      "PROVIDER_FAILED",
+                      "TOOL_FAILED",
+                      "POLICY_REQUIRED",
+                      "BUDGET_EXCEEDED",
+                      "CANCELLED",
+                      "STRUCTURED_OUTPUT_INVALID",
+                      "SCRIPT_EXHAUSTED"
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  },
+                  "details": {
+                    "$ref": "#/$defs/__schema0"
+                  }
+                },
+                "required": ["code", "message", "retryable"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["toolCallId", "error"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "context.compacted"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "beforeTokens": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "afterTokens": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "summary": {
+                "$ref": "#/$defs/__schema0"
+              }
+            },
+            "required": ["beforeTokens", "afterTokens", "summary"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "input.requested"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1
+              },
+              "schema": {
+                "$ref": "#/$defs/__schema0"
+              }
+            },
+            "required": ["requestId", "prompt"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "input.received"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "value": {
+                "$ref": "#/$defs/__schema0"
+              }
+            },
+            "required": ["requestId", "value"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "session.completed"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "$ref": "#/$defs/__schema0"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "session.failed"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "error": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "enum": [
+                      "VALIDATION_FAILED",
+                      "INVALID_TRANSITION",
+                      "VERSION_CONFLICT",
+                      "CURSOR_CONFLICT",
+                      "PROVIDER_FAILED",
+                      "TOOL_FAILED",
+                      "POLICY_REQUIRED",
+                      "BUDGET_EXCEEDED",
+                      "CANCELLED",
+                      "STRUCTURED_OUTPUT_INVALID",
+                      "SCRIPT_EXHAUSTED"
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  },
+                  "details": {
+                    "$ref": "#/$defs/__schema0"
+                  }
+                },
+                "required": ["code", "message", "retryable"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["error"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "string",
+            "const": "1"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "cursor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "turnId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "stepId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "causationId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "type": {
+            "type": "string",
+            "const": "session.cancelled"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "cursor",
+          "sessionId",
+          "correlationId",
+          "occurredAt",
+          "type",
+          "data"
+        ],
+        "additionalProperties": false
+      }
+    ],
+    "$defs": {
+      "__schema0": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/__schema0"
+            }
+          },
+          {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@remcod/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "schema:fixture": "tsc -p tsconfig.json && node scripts/update-json-schema-fixture.mjs && prettier --write tests/fixtures/protocol-v1.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "zod": "4.5.4"
+  }
+}

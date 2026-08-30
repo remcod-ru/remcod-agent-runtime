@@ -1,0 +1,12 @@
+packages:
+  - packages/protocol
+  - packages/core
+  - packages/runtime
+  - packages/model-router
+  - packages/tools
+  - packages/testing
+  - packages/sdk
+  - apps/*
+  - examples/*
+minimumReleaseAgeExclude:
+  - zod@4.5.4

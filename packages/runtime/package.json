@@ -1,0 +1,28 @@
+{
+  "name": "@remcod/runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./transport": {
+      "types": "./dist/transport/index.d.ts",
+      "import": "./dist/transport/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p transport/tsconfig.json",
+    "test": "vitest run src transport",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p transport/tsconfig.json"
+  },
+  "dependencies": {
+    "@remcod/core": "workspace:*",
+    "@remcod/model-router": "workspace:*",
+    "@remcod/protocol": "workspace:*",
+    "@remcod/tools": "workspace:*",
+    "zod": "4.5.4"
+  }
+}

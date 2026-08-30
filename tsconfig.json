@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "composite": false,
+    "declaration": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "strict": true,
+    "target": "ES2024"
+  },
+  "include": ["types/**/*.d.ts"]
+}
