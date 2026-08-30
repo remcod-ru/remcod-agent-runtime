@@ -1,9 +1,5 @@
 <p align="right"><a href="README.md">Русский</a> · English</p>
 
-<p align="center">
-  <img src="docs/assets/brand/remcod-agent-runtime-mark.png" alt="REMCOD Agent Runtime logo" width="128">
-</p>
-
 # REMCOD Agent Runtime
 
 Provider-neutral execution runtime and test harness for autonomous agents. This
