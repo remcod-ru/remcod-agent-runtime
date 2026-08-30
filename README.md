@@ -2,6 +2,10 @@
   <img src="docs/assets/brand/remcod-agent-runtime-cover.png" alt="Обложка REMCOD Agent Runtime" width="100%">
 </p>
 
+<p align="center">
+  <img src="docs/assets/brand/remcod-agent-runtime-mark.png" alt="Логотип REMCOD Agent Runtime" width="128">
+</p>
+
 <h1 align="center">REMCOD Agent Runtime</h1>
 
 <p align="center"><strong>Надёжная среда выполнения ИИ-агентов.</strong></p>
