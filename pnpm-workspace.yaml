@@ -4,6 +4,7 @@ packages:
   - packages/runtime
   - packages/model-router
   - packages/tools
+  - packages/policy
   - packages/testing
   - packages/sdk
   - apps/*

@@ -57,6 +57,18 @@ importers:
         specifier: workspace:*
         version: link:../protocol
 
+  packages/policy:
+    dependencies:
+      "@remcod/protocol":
+        specifier: workspace:*
+        version: link:../protocol
+      "@remcod/tools":
+        specifier: workspace:*
+        version: link:../tools
+      zod:
+        specifier: 4.5.4
+        version: 4.5.4
+
   packages/protocol:
     dependencies:
       zod:
@@ -71,6 +83,9 @@ importers:
       "@remcod/model-router":
         specifier: workspace:*
         version: link:../model-router
+      "@remcod/policy":
+        specifier: workspace:*
+        version: link:../policy
       "@remcod/protocol":
         specifier: workspace:*
         version: link:../protocol
@@ -89,6 +104,9 @@ importers:
       "@remcod/model-router":
         specifier: workspace:*
         version: link:../model-router
+      "@remcod/policy":
+        specifier: workspace:*
+        version: link:../policy
       "@remcod/protocol":
         specifier: workspace:*
         version: link:../protocol

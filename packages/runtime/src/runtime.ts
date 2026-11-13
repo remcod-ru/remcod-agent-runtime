@@ -14,6 +14,13 @@ import {
   ProviderRegistry,
 } from "@remcod/model-router";
 import {
+  PolicyError,
+  digestToolAction,
+  type ApprovalLedger,
+  type PolicyAction,
+  type PolicyEngine,
+} from "@remcod/policy";
+import {
   AgentIdSchema,
   JsonValueSchema,
   SessionIdSchema,
@@ -72,6 +79,16 @@ export interface RuntimeConfig {
   readonly compactor?: ContextCompactor;
   readonly retry?: RetryPolicy;
   readonly defaults?: Partial<RuntimeLimits>;
+  /**
+   * Explicit capability policy. When present it replaces the legacy
+   * `write`/`privileged` blanket refusal with a decision per exact action.
+   */
+  readonly policy?: PolicyEngine;
+  /**
+   * Trusted approval ledger. Only approvals issued by a server-side principal
+   * can let a side-effecting tool run; the model never supplies a decision.
+   */
+  readonly approvals?: ApprovalLedger;
   readonly clock?: () => Date;
   readonly idFactory?: <Name extends string>(brand: Name) => BrandedId<Name>;
 }
@@ -313,6 +330,8 @@ class DefaultAgentRuntime implements AgentRuntime {
   readonly #defaults: RuntimeLimits;
   readonly #clock: () => Date;
   readonly #idFactory: <Name extends string>(brand: Name) => BrandedId<Name>;
+  readonly #policy: PolicyEngine | undefined;
+  readonly #approvals: ApprovalLedger | undefined;
   readonly #active = new Map<SessionId, ActiveRun>();
 
   constructor(config: RuntimeConfig) {
@@ -321,6 +340,11 @@ class DefaultAgentRuntime implements AgentRuntime {
     this.#compactor = config.compactor ?? defaultRuntimeConfig.compactor;
     this.#retry = config.retry ?? defaultRuntimeConfig.retry;
     this.#defaults = resolveRuntimeLimits(config.defaults);
+    this.#policy = config.policy;
+    this.#approvals = config.approvals;
+    if (this.#approvals !== undefined && this.#policy === undefined) {
+      throw new TypeError("approvals require an explicit policy engine");
+    }
     this.#clock = config.clock ?? (() => new Date());
     this.#idFactory = config.idFactory ?? createId;
     if (
@@ -1117,7 +1141,96 @@ class DefaultAgentRuntime implements AgentRuntime {
         messages.push(this.#toolFailureMessage(call, failure));
         continue;
       }
-      if (requiresExplicitPolicy(tool.risk)) {
+      if (this.#policy) {
+        const policyAction: PolicyAction = {
+          sessionId: session.id,
+          turnId: turn.id,
+          stepId: current.step.id,
+          toolCallId: call.id,
+          toolName: tool.name,
+          risk: tool.risk,
+          inputDigest: digestToolAction({
+            toolName: tool.name,
+            input: call.input,
+          }),
+        };
+        const decision = this.#policy.evaluate(policyAction);
+        if (decision.outcome === "deny") {
+          const failure = new RuntimeFailure(
+            "POLICY_REQUIRED",
+            `Tool ${tool.name} is denied by policy: ${decision.reason}`,
+            false,
+            {
+              inputDigest: policyAction.inputDigest,
+              outcome: "denied",
+              reason: decision.reason,
+              risk: tool.risk,
+              toolName: tool.name,
+            },
+          );
+          await this.#recordToolFailure(
+            session.id,
+            turn.id,
+            current,
+            call,
+            failure,
+            correlationId,
+          );
+          throw failure;
+        }
+        if (decision.outcome === "require_approval") {
+          const approvals = this.#approvals;
+          if (!approvals) {
+            const failure = new RuntimeFailure(
+              "POLICY_REQUIRED",
+              `Tool ${tool.name} requires an explicit policy decision: ${decision.reason}`,
+              false,
+              {
+                inputDigest: policyAction.inputDigest,
+                outcome: "approval_required",
+                risk: tool.risk,
+                toolName: tool.name,
+              },
+            );
+            await this.#recordToolFailure(
+              session.id,
+              turn.id,
+              current,
+              call,
+              failure,
+              correlationId,
+            );
+            throw failure;
+          }
+          try {
+            approvals.consume(policyAction);
+          } catch (error) {
+            const approvalCode =
+              error instanceof PolicyError ? error.code : "APPROVAL_MISMATCH";
+            const failure = new RuntimeFailure(
+              "POLICY_REQUIRED",
+              `Tool ${tool.name} requires an approval bound to this exact action`,
+              false,
+              {
+                approval: approvalCode,
+                inputDigest: policyAction.inputDigest,
+                outcome: "approval_rejected",
+                risk: tool.risk,
+                toolName: tool.name,
+              },
+            );
+            await this.#recordToolFailure(
+              session.id,
+              turn.id,
+              current,
+              call,
+              failure,
+              correlationId,
+            );
+            throw failure;
+          }
+        }
+      } else if (requiresExplicitPolicy(tool.risk)) {
         const failure = new RuntimeFailure(
           "POLICY_REQUIRED",
           `Tool ${tool.name} requires an explicit policy decision`,

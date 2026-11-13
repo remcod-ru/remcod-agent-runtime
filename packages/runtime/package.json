@@ -21,6 +21,7 @@
   "dependencies": {
     "@remcod/core": "workspace:*",
     "@remcod/model-router": "workspace:*",
+    "@remcod/policy": "workspace:*",
     "@remcod/protocol": "workspace:*",
     "@remcod/tools": "workspace:*",
     "zod": "4.5.4"

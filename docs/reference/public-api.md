@@ -12,8 +12,10 @@ Most agent authors should import from `@remcod/sdk`:
 import {
   ProviderRegistry,
   ScriptedModel,
+  createApprovalLedger,
   createId,
   createInMemoryRuntimeStore,
+  createPolicyEngine,
   createRuntime,
   defineAgent,
   defineTool,
@@ -22,8 +24,8 @@ import {
 ```
 
 The SDK re-exports selected types for agents, models, protocol records/events,
-runtime/store, transport, scripted testing, and tools. It does not re-export
-package internals or every protocol schema.
+runtime/store, policy decisions and approvals, transport, scripted testing, and
+tools. It does not re-export package internals or every protocol schema.
 
 ## Agent and model contracts
 
@@ -83,7 +85,41 @@ normalized `z.output<OutputSchema>`.
 
 `defineTool` snapshots the definition, rejects invalid timeouts and output schemas
 without a representable JSON output side, and validates input/output around the
-implementation. Phase 1 runtime executes only `read` and `draft` risks.
+implementation. Without a configured policy the runtime executes only `read` and
+`draft` risks; `write` and `privileged` fail with `POLICY_REQUIRED`.
+
+## Policy and approvals
+
+```ts
+interface PolicyAction {
+  sessionId: SessionId;
+  turnId: TurnId;
+  stepId: StepId;
+  toolCallId: ToolCallId;
+  toolName: string;
+  risk: ToolRisk;
+  inputDigest: string; // sha256 hex of canonical { input, toolName }
+}
+
+type PolicyDecision =
+  | { outcome: "allow" }
+  | { outcome: "deny"; reason: string }
+  | { outcome: "require_approval"; reason: string };
+
+function createPolicyEngine(config?: PolicyConfig): PolicyEngine;
+function createApprovalLedger(options?: ApprovalLedgerOptions): ApprovalLedger;
+function digestToolAction(action: {
+  toolName: string;
+  input: JsonValue;
+}): string;
+```
+
+`createRuntime({ policy, approvals })` evaluates the policy for each proposed tool
+call before input validation and idempotency. A denial and a missing approval both
+fail the turn with `POLICY_REQUIRED`; `details.outcome` says which case
+(`denied`, `approval_required`, `approval_rejected`) and, for a rejected approval,
+`details.approval` names the reason. `consume()` is one-shot, so the same approval
+can never authorize two effects.
 
 ## Runtime
 

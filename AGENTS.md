@@ -3,9 +3,13 @@
 Provider-neutral open-source runtime и test harness для автономных агентов. Текущий
 реализованный срез — локальная in-memory основа Phase 0 + Phase 1: protocol v1,
 agent/model/tool contracts, ограниченный model/tool loop, event store, NDJSON/HTTP
-transport, deterministic testing, curated SDK и runnable example. Production
-durability, PostgreSQL store, policy engine, browser/computer control, scheduler,
-multi-agent orchestration, deployment и public release пока отсутствуют.
+transport, deterministic testing, curated SDK и runnable example. Дополнительно
+реализован первый срез Phase 6: детерминированная policy-проверка перед
+side-effecting tool call и capability-bound approvals, привязанные к точному
+canonical action digest. Production durability, PostgreSQL store, интерактивный
+park/resume подтверждений, policy-движок уровня L0–L5, secret broker,
+browser/computer control, scheduler, multi-agent orchestration, deployment и public
+release пока отсутствуют.
 
 ## Стек и проверенное состояние
 
@@ -35,6 +39,7 @@ multi-agent orchestration, deployment и public release пока отсутст�
 | core | `packages/core/src/{agent,limits,retry,compaction,defaults}.ts` | agent definitions, budgets, retry и compaction contracts |
 | model seam | `packages/model-router/src/index.ts` | `ModelProvider`, normalized request/response, exact provider registry |
 | tools | `packages/tools/src/index.ts` | typed definitions, Zod validation, risk, timeout и abort envelope |
+| policy | `packages/policy/src/index.ts` | canonical action digest, allow/deny/require-approval decisions, in-memory approval ledger |
 | runtime | `packages/runtime/src/{runtime,store,reducer}.ts` | execution loop, in-memory CAS/event store, pure reducer |
 | transport | `packages/runtime/transport/index.ts` | validated NDJSON и framework-neutral HTTP handler |
 | testing | `packages/testing/src/index.ts` | deterministic `ScriptedModel` |
@@ -44,9 +49,9 @@ multi-agent orchestration, deployment и public release пока отсутст�
 | docs | `docs/architecture/overview.md`, `docs/concepts/runtime-model.md`, `docs/reference/{public-api,protocol-v1}.md` | актуальные boundaries и public contracts |
 
 Реальные workspace packages: `@remcod/protocol`, `@remcod/core`,
-`@remcod/model-router`, `@remcod/tools`, `@remcod/runtime` (и explicit subpath
-`@remcod/runtime/transport`), `@remcod/testing`, `@remcod/sdk`, а также
-`@remcod/example-basic-agent`. Остальные каталоги в `packages/`, `apps/` и `examples/`
+`@remcod/model-router`, `@remcod/tools`, `@remcod/policy`, `@remcod/runtime` (и
+explicit subpath `@remcod/runtime/transport`), `@remcod/testing`, `@remcod/sdk`, а
+также `@remcod/example-basic-agent`. Остальные каталоги в `packages/`, `apps/` и `examples/`
 с одним README — roadmap placeholders, не скрытая реализация и не готовые build
 targets.
 
@@ -55,9 +60,10 @@ targets.
 ```text
 protocol          -> zod
 tools             -> protocol, zod
+policy            -> protocol, tools, zod
 core              -> protocol, tools, zod
 model-router      -> core, protocol
-runtime           -> core, model-router, protocol, tools, zod
+runtime           -> core, model-router, policy, protocol, tools, zod
 runtime/transport -> protocol, runtime
 testing           -> model-router, protocol
 sdk               -> все public packages, zod
@@ -85,8 +91,12 @@ sdk               -> все public packages, zod
 3. `runTurn` валидирует JSON input/version, переводит session/turn в running,
    собирает bounded context и вызывает exact provider из `ProviderRegistry`.
 4. `message` завершает step/turn/session; `tool_calls` исполняются последовательно,
-   outputs возвращаются следующему model request. Успешный Phase 1 turn завершает и
-   session; публичного continuation/replay/time-travel API нет.
+   outputs возвращаются следующему model request. Перед валидацией input и
+   idempotency-claim runtime применяет policy, если она задана: и `deny`, и
+   отсутствие подходящего approval дают `POLICY_REQUIRED`, а конкретная причина —
+   в `details.outcome` (`denied`/`approval_required`/`approval_rejected`) и
+   `details.approval`. Успешный Phase 1 turn завершает и session;
+   публичного continuation/replay/time-travel API нет.
 5. Все изменения session/events идут через store CAS/cursor operations. Pure
    `reduceRuntimeEvents` восстанавливает session, turns, steps и counters, но не
    вызывает provider/tool и не является durability/replay обещанием.
@@ -117,8 +127,17 @@ sdk               -> все public packages, zod
 - Provider retry по умолчанию: максимум 3 попытки, только для ошибок с
   `retryable: true`, exponential delay с cap. Tool effects runtime автоматически
   не retry.
-- Tool risk: `read | draft | write | privileged`; Phase 1 исполняет только `read`
-  и `draft`, а `write`/`privileged` возвращают `POLICY_REQUIRED`.
+- Tool risk: `read | draft | write | privileged`; без `policy` в конфиге Phase 1
+  исполняет только `read` и `draft`, а `write`/`privileged` возвращают
+  `POLICY_REQUIRED`. С `policy` решение принимает она: `read`/`draft` по умолчанию
+  `allow`, `write`/`privileged` — `require_approval` или `deny`.
+- Policy decisions чистые и детерминированные: тот же action даёт тот же вывод.
+  Approval привязан к `sessionId` + `toolName` + sha256 от canonical
+  `{ input, toolName }` и расходуется ровно один раз; чужой input, другой tool,
+  другая session, pending/denied/expired approval и повторное использование
+  падают fail-closed.
+- Ledger — единственный источник «approved». Ни model output, ни turn input не
+  могут выдать approval; trusted principal приходит извне runtime.
 - `defineTool` immutable-snapshot'ит definition, валидирует timeout и JSON-output
   representability. Author получает normalized `z.output<InputSchema>` и возвращает
   raw `z.input<OutputSchema>`; output нормализуется один раз, cached output только
@@ -173,6 +192,8 @@ sdk               -> все public packages, zod
 - Один Vitest-файл: `pnpm exec vitest run packages/runtime/src/runtime.test.ts`.
 - Store: `pnpm exec vitest run packages/runtime/src/store.test.ts`.
 - Runtime contracts: `pnpm exec vitest run packages/runtime/src/runtime-contracts.test.ts`.
+- Policy: `pnpm exec vitest run packages/policy/src/index.test.ts`.
+- Policy integration: `pnpm exec vitest run packages/runtime/src/policy.test.ts`.
 - Transport: `pnpm exec vitest run packages/runtime/transport/transport.test.ts`.
 - Protocol events: `pnpm exec vitest run packages/protocol/tests/events.test.ts`.
 - Basic example: `pnpm exec vitest run examples/basic-agent/src/index.test.ts`.
