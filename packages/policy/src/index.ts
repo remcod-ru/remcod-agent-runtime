@@ -53,6 +53,7 @@ export type PolicyErrorCode =
   | "APPROVAL_NOT_FOUND"
   | "APPROVAL_ALREADY_DECIDED"
   | "APPROVAL_NOT_APPROVED"
+  | "APPROVAL_WITHDRAWN"
   | "APPROVAL_EXPIRED"
   | "APPROVAL_ALREADY_CONSUMED"
   | "APPROVAL_MISMATCH"
@@ -377,7 +378,12 @@ export function createPolicyEngine(config: PolicyConfig = {}): PolicyEngine {
   return Object.freeze(engine);
 }
 
-export const ApprovalStatusSchema = z.enum(["pending", "approved", "denied"]);
+export const ApprovalStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "denied",
+  "withdrawn",
+]);
 
 export type ApprovalStatus = z.infer<typeof ApprovalStatusSchema>;
 
@@ -414,6 +420,12 @@ export interface ApprovalLedgerOptions {
 export interface ApprovalLedger {
   request(action: PolicyAction, input: RequestApprovalInput): ApprovalRecord;
   decide(approvalId: string, input: DecideApprovalInput): ApprovalRecord;
+  /**
+   * Withdraw a still-pending request (the asker gave up: aborted, timed out, or
+   * the turn ended). A late decision or a later consumption is then refused, so
+   * an answer that arrives after the question is gone never authorizes work.
+   */
+  withdraw(approvalId: string, input: DecideApprovalInput): ApprovalRecord;
   /** One-shot, fail-closed consumption bound to the exact action. */
   consume(action: PolicyAction): ApprovalRecord;
   /** First record for this exact action, or null when none was ever requested. */
@@ -566,6 +578,31 @@ export function createApprovalLedger(
       return cloneRecord(next);
     },
 
+    withdraw(approvalId, input): ApprovalRecord {
+      const record = require(approvalId);
+      if (input.principalId.length === 0) {
+        throw new PolicyError(
+          "INVALID_APPROVAL",
+          "Withdrawal requires a trusted principal",
+        );
+      }
+      if (record.status !== "pending") {
+        throw new PolicyError(
+          "APPROVAL_ALREADY_DECIDED",
+          `Approval ${approvalId} is already ${record.status}`,
+        );
+      }
+      const withdrawnAt = now();
+      const next: ApprovalRecord = Object.freeze({
+        ...record,
+        status: "withdrawn",
+        decidedAt: withdrawnAt.toISOString(),
+        decidedBy: input.principalId,
+      });
+      records.set(approvalId, next);
+      return cloneRecord(next);
+    },
+
     consume(action): ApprovalRecord {
       const wanted = cloneAction(action);
       const matches = [...records.values()].filter((record) =>
@@ -605,6 +642,12 @@ export function createApprovalLedger(
           throw new PolicyError(
             "APPROVAL_NOT_APPROVED",
             "The matching approval is still pending",
+          );
+        }
+        if (matches.some((record) => record.status === "withdrawn")) {
+          throw new PolicyError(
+            "APPROVAL_WITHDRAWN",
+            "The matching approval was withdrawn before it was decided",
           );
         }
         if (matches.some((record) => record.status === "denied")) {

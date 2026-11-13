@@ -92,11 +92,12 @@ sdk               -> все public packages, zod
    собирает bounded context и вызывает exact provider из `ProviderRegistry`.
 4. `message` завершает step/turn/session; `tool_calls` исполняются последовательно,
    outputs возвращаются следующему model request. Перед валидацией input и
-   idempotency-claim runtime применяет policy, если она задана: `deny` и
-   «подтверждение отвергнуто/истекло» дают `POLICY_REQUIRED` с причиной в
-   `details.outcome`; отсутствие подходящего approval паркует turn в
-   `waiting_input` (`input.requested`, `pendingApproval`), и `resumeTurn`
-   продолжает тот же turn и `toolCallId`. Успешный Phase 1 turn завершает и session;
+   idempotency-claim runtime применяет policy, если она задана: `deny` пишется в
+   `tool.failed` и возвращается модели как обычный tool-result (turn и session
+   живут, модель может выбрать другой путь); отсутствие подходящего approval
+   паркует turn в `waiting_input` (`input.requested`, `pendingApproval`), и
+   `resumeTurn` продолжает тот же turn и `toolCallId`. Успешный Phase 1 turn
+   завершает и session;
    публичного continuation/replay/time-travel API нет.
 5. Все изменения session/events идут через store CAS/cursor operations. Pure
    `reduceRuntimeEvents` восстанавливает session, turns, steps и counters, но не
@@ -145,9 +146,10 @@ sdk               -> все public packages, zod
 - Парковка: `runTurn` при наличии parked turn отвергается (`INVALID_TRANSITION`,
   `reason: approval_pending`), `resumeTurn` при pending не пишет событий,
   denied/expired отменяют session, approved продолжает turn и расходует approval
-  один раз. Continuation живёт в памяти: рестарт теряет парковку, `resumeTurn`
-  fail-closed. Каждый parked-вызов списывает по попытке в `maxToolCalls` дважды
-  (при постановке и при резюме).
+  один раз. `cancelSession` отзывает (withdraw) ещё не решённый запрос, поэтому
+  поздний ответ человека отклоняется. Continuation живёт в памяти: рестарт теряет
+  парковку, `resumeTurn` fail-closed. Каждый parked-вызов списывает по попытке в
+  `maxToolCalls` дважды (при постановке и при резюме).
 - `defineTool` immutable-snapshot'ит definition, валидирует timeout и JSON-output
   representability. Author получает normalized `z.output<InputSchema>` и возвращает
   raw `z.input<OutputSchema>`; output нормализуется один раз, cached output только

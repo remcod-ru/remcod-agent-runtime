@@ -215,7 +215,7 @@ describe("policy integration", () => {
     expect(executions.count).toBe(0);
   });
 
-  it("denies a tool named by a deny rule and never executes it", async () => {
+  it("denies a tool named by a deny rule, returns the refusal to the model and keeps the turn alive", async () => {
     const executions = { count: 0 };
     const tool = writeTool(executions, "finance.export");
     const policy = createPolicyEngine({
@@ -232,18 +232,37 @@ describe("policy integration", () => {
         kind: "tool_calls",
         calls: [{ id: "call-1", name: tool.name, input: { amount: 1 } }],
       },
+      { kind: "message", content: { answer: "cannot export, will summarise" } },
     ]);
     const runtime = harness(provider, { tools: [tool], policy });
     const session = await runtime.createSession({
       agentId: createId("AgentId", "agent-1"),
     });
-    await expect(
-      runtime.runTurn({ sessionId: session.id, input: "go" }),
-    ).rejects.toMatchObject({
+    const result = await runtime.runTurn({
+      sessionId: session.id,
+      input: "export finance",
+    });
+
+    // The run survives: the model is told why and answers instead of the
+    // session dying on a thrown policy failure.
+    expect(result.session.status).toBe("completed");
+    expect(result.output).toEqual({ answer: "cannot export, will summarise" });
+    expect(executions.count).toBe(0);
+    expect(provider.remaining()).toBe(0);
+
+    const events = await (async () => {
+      const collected = [];
+      for await (const event of runtime.events({ sessionId: session.id })) {
+        collected.push(event);
+      }
+      return collected;
+    })();
+    const failed = events.find((event) => event.type === "tool.failed");
+    expect(failed?.data.error).toMatchObject({
       code: "POLICY_REQUIRED",
       details: { outcome: "denied" },
     });
-    expect(executions.count).toBe(0);
+    expect(events.some((event) => event.type === "tool.started")).toBe(false);
   });
 
   it("consumes an approval once, so a second identical call fails closed", async () => {

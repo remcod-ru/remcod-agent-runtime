@@ -311,7 +311,7 @@ describe("interactive approvals", () => {
     expect((await runtime.getSession(session.id))?.status).toBe("cancelled");
   });
 
-  it("drops the parked continuation when the session is cancelled", async () => {
+  it("withdraws the pending question when the session is cancelled, so a late answer cannot authorize work", async () => {
     const executions = { count: 0 };
     const tool = writeTool(executions);
     const approvals = createApprovalLedger();
@@ -331,11 +331,16 @@ describe("interactive approvals", () => {
       sessionId: session.id,
       input: "create an invoice",
     });
+    const requestId = parked.pendingApproval?.requestId as string;
     await runtime.cancelSession(session.id, "stop");
-    approvals.decide(parked.pendingApproval?.requestId as string, {
-      principalId: "principal-1",
-      approved: true,
-    });
+    expect(approvals.get(requestId)?.status).toBe("withdrawn");
+    // The human answers after the question is gone: the answer is refused.
+    expect(() =>
+      approvals.decide(requestId, {
+        principalId: "principal-1",
+        approved: true,
+      }),
+    ).toThrowError(/already withdrawn/);
 
     await expect(
       runtime.resumeTurn({ sessionId: session.id }),

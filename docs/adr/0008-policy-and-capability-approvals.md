@@ -35,12 +35,20 @@ Two failure modes had to stay impossible:
    `defineTool` validates the declared risk, so a JavaScript caller cannot invent
    a risk that a policy would treat as harmless.
 4. `createRuntime({ policy, approvals })` evaluates the policy for each proposed
-   tool call before input validation and idempotency. Both a denial and a missing
-   approval fail the turn with the existing `POLICY_REQUIRED` code, distinguishing
-   the case through `details.outcome` (`denied`, `approval_required`,
-   `approval_rejected`) and `details.approval` (`APPROVAL_MISMATCH`,
-   `APPROVAL_ALREADY_CONSUMED`, `APPROVAL_NOT_APPROVED`, `APPROVAL_EXPIRED`).
-   Omitting `policy` preserves the Phase 1 blanket refusal exactly.
+   tool call before input validation and idempotency. A denial does **not** kill
+   the run: it is recorded as `tool.failed` and returned to the model as an
+   ordinary tool result (`isError` content with the reason), so the model can pick
+   another approach and the turn and session stay alive. A missing approval parks
+   the turn instead (see below). Reasons travel in `details.outcome`
+   (`denied`, `approval_required`, `approval_rejected`) and `details.approval`
+   (`APPROVAL_MISMATCH`, `APPROVAL_ALREADY_CONSUMED`, `APPROVAL_NOT_APPROVED`,
+   `APPROVAL_WITHDRAWN`, `APPROVAL_EXPIRED`). Omitting `policy` preserves the
+   Phase 1 blanket refusal exactly.
+5. The ledger can **withdraw** a still-pending request. Cancelling a parked turn
+   withdraws its question, and a decision or consumption after that is refused:
+   an answer that arrives after nobody waits for it never authorizes work.
+   (This follows the shipped DeepSeek Harness model, where a denial is a tool
+   result and an aborted ask discards late answers.)
 
 ## Consequences
 

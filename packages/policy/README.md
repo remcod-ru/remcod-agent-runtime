@@ -17,7 +17,9 @@ place:
 - `createApprovalLedger()` stores approvals issued by a **trusted principal**
   (a server-side caller, never the model). An approval is bound to the policy
   digest and the exact canonical action digest; a different input, tool, session
-  or ruleset does not match, and a second consumption fails closed.
+  or ruleset does not match, and a second consumption fails closed. `withdraw()`
+  retires a still-pending question, so an answer that arrives after the asker gave
+  up is refused instead of authorizing work.
 - `digestToolAction()` and `canonicalJson()` define that binding deterministically.
 
 ## Public surface

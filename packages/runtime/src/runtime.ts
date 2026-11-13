@@ -503,7 +503,24 @@ class DefaultAgentRuntime implements AgentRuntime {
 
   async cancelSession(sessionId: SessionId, reason?: string): Promise<Session> {
     const id = SessionIdSchema.parse(sessionId);
+    const parked = this.#parked.get(id);
     this.#parked.delete(id);
+    if (parked) {
+      // The question is gone with the turn: withdraw it so a late human answer
+      // can never authorize work that nobody is waiting for any more.
+      const record = this.#approvals?.get(parked.requestId);
+      if (record && record.status === "pending") {
+        try {
+          this.#approvals?.withdraw(parked.requestId, {
+            principalId: record.principalId,
+            approved: false,
+          });
+        } catch {
+          // Already decided in the same instant: the decision stands and stays
+          // inert because the continuation is gone.
+        }
+      }
+    }
     const active = this.#active.get(id);
     if (active) {
       active.controller.abort(
@@ -1558,7 +1575,12 @@ class DefaultAgentRuntime implements AgentRuntime {
             failure,
             correlationId,
           );
-          throw failure;
+          // A denial is the model's problem to work around, not a reason to kill
+          // the run: the refusal travels back as a tool result, exactly like an
+          // unknown tool, so the model can choose another approach while the
+          // session and the turn stay alive.
+          messages.push(this.#toolFailureMessage(call, failure));
+          continue;
         }
         if (decision.outcome === "require_approval") {
           const approvals = this.#approvals;

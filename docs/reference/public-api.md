@@ -117,11 +117,13 @@ function digestToolAction(action: {
 ```
 
 `createRuntime({ policy, approvals })` evaluates the policy for each proposed tool
-call before input validation and idempotency. A denial fails the turn with
-`POLICY_REQUIRED`; `details.outcome` says which case (`denied`,
-`approval_rejected`) and, for a rejected approval, `details.approval` names the
-reason. `consume()` is one-shot, so the same approval can never authorize two
-effects.
+call before input validation and idempotency. A denial is recorded as
+`tool.failed` and returned to the model as a tool result carrying the reason
+(`POLICY_REQUIRED`, `details.outcome: "denied"`), so the turn continues and the
+model can choose another approach; the tool never runs. A missing approval parks
+the turn instead (below). `consume()` is one-shot, so the same approval can never
+authorize two effects, and `withdraw()` retires a pending question so a late
+answer is refused.
 
 ## Waiting for a human decision
 

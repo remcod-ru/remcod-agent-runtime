@@ -258,6 +258,23 @@ describe("createApprovalLedger", () => {
     ).toThrowError(/No approval matches this exact action/);
   });
 
+  it("refuses a decision that arrives after the request was withdrawn", () => {
+    const ledger = createApprovalLedger({
+      idFactory: (() => {
+        let index = 0;
+        return () => `apv_${++index}`;
+      })(),
+    });
+    const request = action();
+    ledger.request(request, { principalId: "principal-1" });
+    ledger.withdraw("apv_1", { principalId: "principal-1", approved: true });
+    expect(ledger.get("apv_1")?.status).toBe("withdrawn");
+    expect(() =>
+      ledger.decide("apv_1", { principalId: "principal-1", approved: true }),
+    ).toThrowError(/already withdrawn/);
+    expect(() => ledger.consume(request)).toThrowError(/was withdrawn/);
+  });
+
   it("requires a trusted principal for requests and decisions", () => {
     const ledger = createApprovalLedger();
     expect(() => ledger.request(action(), { principalId: "" })).toThrowError(
