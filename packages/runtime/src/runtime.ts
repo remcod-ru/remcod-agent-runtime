@@ -161,6 +161,23 @@ interface CurrentStep {
   terminal: boolean;
 }
 
+/**
+ * Mutable state of one turn while the model/tool loop runs. Keeping it in one
+ * object lets the loop be entered again (approval resume) without rebuilding the
+ * conversation from events the protocol never stores.
+ */
+interface TurnMachine {
+  session: Session;
+  turn: Turn;
+  agent: SnapshotAgent;
+  provider: ModelProvider;
+  limits: RuntimeLimits;
+  counters: Counters;
+  messages: readonly ModelMessage[] | null;
+  correlationId: string;
+  currentStep: CurrentStep | null;
+}
+
 function runtimeError(
   error: unknown,
   fallback: RuntimeErrorCode,
@@ -558,29 +575,56 @@ class DefaultAgentRuntime implements AgentRuntime {
     const signal = options.signal
       ? AbortSignal.any([options.signal, active.controller.signal])
       : active.controller.signal;
-    const counters: Counters = {
-      steps: 0,
-      modelCalls: 0,
-      toolCalls: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      totalTokens: 0,
-    };
-    let currentStep: CurrentStep | null = null;
+    return this.#runLoop(
+      {
+        session,
+        turn,
+        agent,
+        provider,
+        limits,
+        counters: {
+          steps: 0,
+          modelCalls: 0,
+          toolCalls: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+        },
+        messages: null,
+        correlationId,
+        currentStep: null,
+      },
+      signal,
+    );
+  }
 
+  async #runLoop(
+    machine: TurnMachine,
+    signal: AbortSignal,
+  ): Promise<RunTurnResult> {
+    const { agent, provider, limits, counters, correlationId } = machine;
+    let session = machine.session;
+    let turn = machine.turn;
+    let messages = machine.messages;
+    let currentStep: CurrentStep | null = machine.currentStep;
+    const sessionId = session.id;
     try {
       if (signal.aborted) throw signal.reason;
-      const priorEvents = (await this.#store.readEvents({ sessionId })).events;
-      reduceRuntimeEvents(priorEvents);
-      const instructions =
-        typeof agent.instructions === "string"
-          ? agent.instructions
-          : await agent.instructions({ session, priorEvents });
-      let messages: readonly ModelMessage[] = [
-        { role: "system", content: instructions },
-        { role: "user", content: turnInput },
-      ];
-
+      if (messages === null) {
+        const priorEvents = (
+          await this.#store.readEvents({ sessionId: session.id })
+        ).events;
+        reduceRuntimeEvents(priorEvents);
+        const instructions =
+          typeof agent.instructions === "string"
+            ? agent.instructions
+            : await agent.instructions({ session, priorEvents });
+        messages = [
+          { role: "system", content: instructions },
+          { role: "user", content: turn.input },
+        ];
+      }
+      machine.messages = messages;
       while (true) {
         if (signal.aborted) throw signal.reason;
         const compacted = await this.#compactIfNeeded(
@@ -666,6 +710,9 @@ class DefaultAgentRuntime implements AgentRuntime {
               }),
             ],
           );
+          machine.session = session;
+          machine.turn = turn;
+          machine.messages = messages;
           return {
             session,
             turn,
@@ -685,14 +732,17 @@ class DefaultAgentRuntime implements AgentRuntime {
           signal,
           (step) => {
             currentStep = step;
+            machine.currentStep = step;
           },
         );
         currentStep = null;
+        machine.currentStep = null;
         messages = [
           ...messages,
           { role: "assistant", content: { toolCalls: response.calls } },
           ...toolMessages,
         ];
+        machine.messages = messages;
       }
     } catch (error) {
       const cancelled = isCancellation(error, signal);
