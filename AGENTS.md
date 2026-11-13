@@ -92,10 +92,11 @@ sdk               -> все public packages, zod
    собирает bounded context и вызывает exact provider из `ProviderRegistry`.
 4. `message` завершает step/turn/session; `tool_calls` исполняются последовательно,
    outputs возвращаются следующему model request. Перед валидацией input и
-   idempotency-claim runtime применяет policy, если она задана: и `deny`, и
-   отсутствие подходящего approval дают `POLICY_REQUIRED`, а конкретная причина —
-   в `details.outcome` (`denied`/`approval_required`/`approval_rejected`) и
-   `details.approval`. Успешный Phase 1 turn завершает и session;
+   idempotency-claim runtime применяет policy, если она задана: `deny` и
+   «подтверждение отвергнуто/истекло» дают `POLICY_REQUIRED` с причиной в
+   `details.outcome`; отсутствие подходящего approval паркует turn в
+   `waiting_input` (`input.requested`, `pendingApproval`), и `resumeTurn`
+   продолжает тот же turn и `toolCallId`. Успешный Phase 1 turn завершает и session;
    публичного continuation/replay/time-travel API нет.
 5. Все изменения session/events идут через store CAS/cursor operations. Pure
    `reduceRuntimeEvents` восстанавливает session, turns, steps и counters, но не
@@ -141,6 +142,12 @@ sdk               -> все public packages, zod
   `InvalidToolRiskError`, а не «не side-effecting» ветка политики.
 - Ledger — единственный источник «approved». Ни model output, ни turn input не
   могут выдать approval; trusted principal приходит извне runtime.
+- Парковка: `runTurn` при наличии parked turn отвергается (`INVALID_TRANSITION`,
+  `reason: approval_pending`), `resumeTurn` при pending не пишет событий,
+  denied/expired отменяют session, approved продолжает turn и расходует approval
+  один раз. Continuation живёт в памяти: рестарт теряет парковку, `resumeTurn`
+  fail-closed. Каждый parked-вызов списывает по попытке в `maxToolCalls` дважды
+  (при постановке и при резюме).
 - `defineTool` immutable-snapshot'ит definition, валидирует timeout и JSON-output
   representability. Author получает normalized `z.output<InputSchema>` и возвращает
   raw `z.input<OutputSchema>`; output нормализуется один раз, cached output только
@@ -197,6 +204,7 @@ sdk               -> все public packages, zod
 - Runtime contracts: `pnpm exec vitest run packages/runtime/src/runtime-contracts.test.ts`.
 - Policy: `pnpm exec vitest run packages/policy/src/index.test.ts`.
 - Policy integration: `pnpm exec vitest run packages/runtime/src/policy.test.ts`.
+- Interactive approvals: `pnpm exec vitest run packages/runtime/src/approvals.test.ts`.
 - Transport: `pnpm exec vitest run packages/runtime/transport/transport.test.ts`.
 - Protocol events: `pnpm exec vitest run packages/protocol/tests/events.test.ts`.
 - Basic example: `pnpm exec vitest run examples/basic-agent/src/index.test.ts`.

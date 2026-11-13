@@ -146,7 +146,7 @@ describe("policy integration", () => {
     expect(approvals.list()[0]?.consumedAt).not.toBeNull();
   });
 
-  it("refuses a write tool when no approval matches the exact input", async () => {
+  it("parks the turn when no approval matches the exact input", async () => {
     const executions = { count: 0 };
     const tool = writeTool(executions);
     const policy = createPolicyEngine();
@@ -184,12 +184,14 @@ describe("policy integration", () => {
       approved: true,
     });
 
-    await expect(
-      runtime.runTurn({ sessionId: session.id, input: "create an invoice" }),
-    ).rejects.toMatchObject({
-      code: "POLICY_REQUIRED",
-      details: { outcome: "approval_rejected", approval: "APPROVAL_MISMATCH" },
+    const result = await runtime.runTurn({
+      sessionId: session.id,
+      input: "create an invoice",
     });
+    expect(result.session.status).toBe("waiting_input");
+    expect(result.turn.status).toBe("waiting_input");
+    expect(result.pendingApproval?.toolName).toBe(tool.name);
+    expect(result.pendingApproval?.requestId).not.toBe(request.approvalId);
     expect(executions.count).toBe(0);
     expect(approvals.list()[0]?.consumedAt).toBeNull();
   });
@@ -350,12 +352,15 @@ describe("policy integration", () => {
       approved: true,
     });
 
-    await expect(
-      runtime.runTurn({ sessionId: session.id, input: "create an invoice" }),
-    ).rejects.toMatchObject({
-      code: "POLICY_REQUIRED",
-      details: { outcome: "approval_rejected", approval: "APPROVAL_MISMATCH" },
+    const result = await runtime.runTurn({
+      sessionId: session.id,
+      input: "create an invoice",
     });
+    expect(result.session.status).toBe("waiting_input");
+    expect(result.pendingApproval?.policyDigest).toBe(
+      runtimePolicy.policyDigest,
+    );
+    expect(result.pendingApproval?.requestId).not.toBe(request.approvalId);
     expect(executions.count).toBe(0);
   });
 });

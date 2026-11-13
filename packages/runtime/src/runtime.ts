@@ -44,7 +44,11 @@ import {
   type TurnId,
   type Usage,
 } from "@remcod/protocol";
-import { requiresExplicitPolicy, type AnyTool } from "@remcod/tools";
+import {
+  requiresExplicitPolicy,
+  type AnyTool,
+  type ToolRisk,
+} from "@remcod/tools";
 import { z } from "zod";
 
 import { reduceRuntimeEvents } from "./reducer.js";
@@ -70,6 +74,22 @@ export interface RunTurnResult {
   readonly turn: Turn;
   readonly output?: JsonValue;
   readonly usage: Usage;
+  /** Present when the turn parked to wait for a human approval decision. */
+  readonly pendingApproval?: PendingApproval;
+}
+
+export interface PendingApproval {
+  readonly requestId: string;
+  readonly toolName: string;
+  readonly risk: ToolRisk;
+  readonly inputDigest: string;
+  readonly policyDigest: string;
+  readonly expiresAt: string | null;
+}
+
+export interface ResumeTurnInput {
+  readonly sessionId: SessionId;
+  readonly expectedSessionVersion?: number;
 }
 
 export interface RuntimeConfig {
@@ -97,6 +117,10 @@ export interface AgentRuntime {
   createSession(input: CreateSessionInput): Promise<Session>;
   runTurn(
     input: RunTurnInput,
+    options?: { readonly signal?: AbortSignal },
+  ): Promise<RunTurnResult>;
+  resumeTurn(
+    input: ResumeTurnInput,
     options?: { readonly signal?: AbortSignal },
   ): Promise<RunTurnResult>;
   cancelSession(sessionId: SessionId, reason?: string): Promise<Session>;
@@ -177,6 +201,29 @@ interface TurnMachine {
   correlationId: string;
   currentStep: CurrentStep | null;
 }
+
+/**
+ * A turn stopped inside a tool round because the exact action needs a human
+ * decision. The remaining calls and the whole machine stay in memory: the
+ * protocol never stores the model's tool-calls response, so the continuation
+ * cannot be rebuilt from events. A process restart loses it by design.
+ */
+interface ParkedTurn {
+  readonly requestId: string;
+  readonly machine: TurnMachine;
+  readonly remainingCalls: readonly ToolCall[];
+  readonly pending: PendingApproval;
+}
+
+type ToolRunOutcome =
+  | { readonly kind: "completed"; readonly messages: readonly ModelMessage[] }
+  | {
+      readonly kind: "parked";
+      readonly messages: readonly ModelMessage[];
+      readonly remainingCalls: readonly ToolCall[];
+      readonly requestId: string;
+      readonly pending: PendingApproval;
+    };
 
 function runtimeError(
   error: unknown,
@@ -350,6 +397,7 @@ class DefaultAgentRuntime implements AgentRuntime {
   readonly #policy: PolicyEngine | undefined;
   readonly #approvals: ApprovalLedger | undefined;
   readonly #active = new Map<SessionId, ActiveRun>();
+  readonly #parked = new Map<SessionId, ParkedTurn>();
 
   constructor(config: RuntimeConfig) {
     this.#store = config.store;
@@ -455,6 +503,7 @@ class DefaultAgentRuntime implements AgentRuntime {
 
   async cancelSession(sessionId: SessionId, reason?: string): Promise<Session> {
     const id = SessionIdSchema.parse(sessionId);
+    this.#parked.delete(id);
     const active = this.#active.get(id);
     if (active) {
       active.controller.abort(
@@ -504,6 +553,16 @@ class DefaultAgentRuntime implements AgentRuntime {
         ),
       );
     }
+    if (this.#parked.has(sessionId)) {
+      return Promise.reject(
+        new RuntimeFailure(
+          "INVALID_TRANSITION",
+          "This session waits for an approval decision; resume it instead",
+          false,
+          { reason: "approval_pending" },
+        ),
+      );
+    }
     const active = createActiveRun();
     this.#active.set(sessionId, active);
     return this.#runRegisteredTurn(input, options, sessionId, active).finally(
@@ -512,6 +571,178 @@ class DefaultAgentRuntime implements AgentRuntime {
         active.finish();
       },
     );
+  }
+
+  resumeTurn(
+    input: ResumeTurnInput,
+    options: { readonly signal?: AbortSignal } = {},
+  ): Promise<RunTurnResult> {
+    const sessionId = SessionIdSchema.parse(input.sessionId);
+    if (this.#active.has(sessionId)) {
+      return Promise.reject(
+        new RuntimeFailure(
+          "VERSION_CONFLICT",
+          "A turn is already running for this session",
+          false,
+        ),
+      );
+    }
+    const parked = this.#parked.get(sessionId);
+    if (!parked) {
+      return Promise.reject(
+        new RuntimeFailure(
+          "INVALID_TRANSITION",
+          "No parked turn is waiting for this session",
+          false,
+          { reason: "no_parked_turn" },
+        ),
+      );
+    }
+    const active = createActiveRun();
+    this.#active.set(sessionId, active);
+    return this.#resumeParkedTurn(parked, options, active).finally(() => {
+      this.#active.delete(sessionId);
+      active.finish();
+    });
+  }
+
+  async #resumeParkedTurn(
+    parked: ParkedTurn,
+    options: { readonly signal?: AbortSignal },
+    active: ActiveRun,
+  ): Promise<RunTurnResult> {
+    const approvals = this.#approvals;
+    const sessionId = parked.machine.session.id;
+    if (!approvals) {
+      this.#parked.delete(sessionId);
+      throw new RuntimeFailure(
+        "INVALID_TRANSITION",
+        "No approval ledger is configured for this runtime",
+        false,
+      );
+    }
+    const current = await this.#store.getSession(sessionId);
+    if (!current) throw new SessionNotFoundError(sessionId);
+    if (current.status !== "waiting_input") {
+      this.#parked.delete(sessionId);
+      throw new RuntimeFailure(
+        "INVALID_TRANSITION",
+        `Session is ${current.status}, not waiting for an approval`,
+        false,
+      );
+    }
+    const record = approvals.get(parked.requestId);
+    if (!record) {
+      this.#parked.delete(sessionId);
+      throw new RuntimeFailure(
+        "INVALID_TRANSITION",
+        "The approval request is missing",
+        false,
+        { reason: "approval_missing" },
+      );
+    }
+    const now = this.#now();
+    const expired =
+      record.expiresAt !== null &&
+      Date.parse(record.expiresAt) <= this.#clock().getTime();
+    if (record.status === "pending" && !expired) {
+      throw new RuntimeFailure(
+        "POLICY_REQUIRED",
+        "The approval is still pending",
+        false,
+        {
+          approvalRequestId: parked.requestId,
+          outcome: "approval_pending",
+        },
+      );
+    }
+    const correlationId = parked.machine.correlationId;
+    const turnId = parked.machine.turn.id;
+    if (record.status !== "approved" || expired) {
+      const decision = expired ? "expired" : "denied";
+      this.#parked.delete(sessionId);
+      await this.#store.compareAndSetSession(
+        sessionId,
+        current.version,
+        { status: "cancelled", updatedAt: now },
+        [
+          this.#newEvent(
+            "input.received",
+            { requestId: parked.requestId, value: { decision } },
+            correlationId,
+            { turnId },
+          ),
+          this.#newEvent(
+            "turn.status_changed",
+            { from: "waiting_input", to: "cancelled", reason: decision },
+            correlationId,
+            { turnId },
+          ),
+          this.#newEvent(
+            "session.status_changed",
+            { from: "waiting_input", to: "cancelled", reason: decision },
+            correlationId,
+            { turnId },
+          ),
+          this.#newEvent(
+            "session.cancelled",
+            { reason: `approval ${decision}` },
+            correlationId,
+            { turnId },
+          ),
+        ],
+      );
+      throw new RuntimeFailure(
+        "POLICY_REQUIRED",
+        `The approval was ${decision}`,
+        false,
+        { approvalRequestId: parked.requestId, outcome: decision },
+      );
+    }
+
+    const session = await this.#store.compareAndSetSession(
+      sessionId,
+      current.version,
+      { status: "running", updatedAt: now },
+      [
+        this.#newEvent(
+          "input.received",
+          {
+            requestId: parked.requestId,
+            value: {
+              decision: "approved",
+              decidedAt: record.decidedAt,
+              decidedBy: record.decidedBy,
+            },
+          },
+          correlationId,
+          { turnId },
+        ),
+        this.#newEvent(
+          "turn.status_changed",
+          { from: "waiting_input", to: "running" },
+          correlationId,
+          { turnId },
+        ),
+        this.#newEvent(
+          "session.status_changed",
+          { from: "waiting_input", to: "running" },
+          correlationId,
+          { turnId },
+        ),
+      ],
+    );
+    this.#parked.delete(sessionId);
+    const machine: TurnMachine = {
+      ...parked.machine,
+      session,
+      turn: { ...parked.machine.turn, status: "running", updatedAt: now },
+      currentStep: null,
+    };
+    const signal = options.signal
+      ? AbortSignal.any([options.signal, active.controller.signal])
+      : active.controller.signal;
+    return this.#runLoop(machine, signal, parked.remainingCalls);
   }
 
   async #runRegisteredTurn(
@@ -601,6 +832,7 @@ class DefaultAgentRuntime implements AgentRuntime {
   async #runLoop(
     machine: TurnMachine,
     signal: AbortSignal,
+    resumeCalls: readonly ToolCall[] | null = null,
   ): Promise<RunTurnResult> {
     const { agent, provider, limits, counters, correlationId } = machine;
     let session = machine.session;
@@ -625,8 +857,35 @@ class DefaultAgentRuntime implements AgentRuntime {
         ];
       }
       machine.messages = messages;
+      let pendingCalls = resumeCalls;
       while (true) {
         if (signal.aborted) throw signal.reason;
+        if (pendingCalls !== null) {
+          const resumed = await this.#executeTools(
+            agent.id,
+            agent.tools,
+            pendingCalls,
+            session,
+            turn,
+            counters,
+            limits,
+            correlationId,
+            signal,
+            (step) => {
+              currentStep = step;
+              machine.currentStep = step;
+            },
+          );
+          currentStep = null;
+          machine.currentStep = null;
+          pendingCalls = null;
+          messages = [...messages, ...resumed.messages];
+          machine.messages = messages;
+          if (resumed.kind === "parked") {
+            return this.#parkApproval(machine, resumed, session, turn);
+          }
+          continue;
+        }
         const compacted = await this.#compactIfNeeded(
           session,
           turn,
@@ -721,7 +980,8 @@ class DefaultAgentRuntime implements AgentRuntime {
           };
         }
 
-        const toolMessages = await this.#executeTools(
+        const toolOutcome = await this.#executeTools(
+          agent.id,
           agent.tools,
           response.calls,
           session,
@@ -740,9 +1000,12 @@ class DefaultAgentRuntime implements AgentRuntime {
         messages = [
           ...messages,
           { role: "assistant", content: { toolCalls: response.calls } },
-          ...toolMessages,
+          ...toolOutcome.messages,
         ];
         machine.messages = messages;
+        if (toolOutcome.kind === "parked") {
+          return this.#parkApproval(machine, toolOutcome, session, turn);
+        }
       }
     } catch (error) {
       const cancelled = isCancellation(error, signal);
@@ -812,6 +1075,72 @@ class DefaultAgentRuntime implements AgentRuntime {
       }
       throw failure;
     }
+  }
+
+  async #parkApproval(
+    machine: TurnMachine,
+    outcome: Extract<ToolRunOutcome, { kind: "parked" }>,
+    session: Session,
+    turn: Turn,
+  ): Promise<RunTurnResult> {
+    const now = this.#now();
+    const waitingTurn: Turn = {
+      ...turn,
+      status: "waiting_input",
+      updatedAt: now,
+    };
+    const parkedSession = await this.#store.compareAndSetSession(
+      session.id,
+      session.version,
+      { status: "waiting_input", updatedAt: now },
+      [
+        this.#newEvent(
+          "turn.status_changed",
+          { from: "running", to: "waiting_input" },
+          machine.correlationId,
+          { turnId: turn.id },
+        ),
+        this.#newEvent(
+          "session.status_changed",
+          { from: "running", to: "waiting_input" },
+          machine.correlationId,
+          { turnId: turn.id },
+        ),
+        this.#newEvent(
+          "input.requested",
+          {
+            requestId: outcome.requestId,
+            prompt: `Approve ${outcome.pending.toolName} (${outcome.pending.risk}) for session ${session.id}?`,
+            schema: {
+              kind: "policy_approval",
+              requestId: outcome.requestId,
+              toolName: outcome.pending.toolName,
+              risk: outcome.pending.risk,
+              inputDigest: outcome.pending.inputDigest,
+              policyDigest: outcome.pending.policyDigest,
+              expiresAt: outcome.pending.expiresAt,
+            },
+          },
+          machine.correlationId,
+          { turnId: turn.id },
+        ),
+      ],
+    );
+    machine.session = parkedSession;
+    machine.turn = waitingTurn;
+    machine.currentStep = null;
+    this.#parked.set(session.id, {
+      requestId: outcome.requestId,
+      machine,
+      remainingCalls: outcome.remainingCalls,
+      pending: outcome.pending,
+    });
+    return {
+      session: parkedSession,
+      turn: waitingTurn,
+      usage: this.#usage(machine.counters),
+      pendingApproval: outcome.pending,
+    };
   }
 
   #usage(counters: Counters): Usage {
@@ -1134,6 +1463,7 @@ class DefaultAgentRuntime implements AgentRuntime {
   }
 
   async #executeTools(
+    agentId: string,
     tools: readonly AnyTool[],
     calls: readonly ToolCall[],
     session: Session,
@@ -1143,10 +1473,10 @@ class DefaultAgentRuntime implements AgentRuntime {
     correlationId: string,
     signal: AbortSignal,
     setCurrent: (step: CurrentStep) => void,
-  ): Promise<readonly ModelMessage[]> {
+  ): Promise<ToolRunOutcome> {
     const byName = new Map(tools.map((tool) => [tool.name, tool]));
     const messages: ModelMessage[] = [];
-    for (const call of calls) {
+    for (const [index, call] of calls.entries()) {
       if (signal.aborted) throw signal.reason;
       this.#assertBudget(
         "maxToolCalls",
@@ -1259,6 +1589,50 @@ class DefaultAgentRuntime implements AgentRuntime {
           } catch (error) {
             const approvalCode =
               error instanceof PolicyError ? error.code : "APPROVAL_MISMATCH";
+            if (
+              approvalCode === "APPROVAL_MISMATCH" ||
+              approvalCode === "APPROVAL_NOT_APPROVED"
+            ) {
+              const existing = approvals.find(policyAction);
+              const request =
+                existing && existing.status === "pending"
+                  ? existing
+                  : approvals.request(policyAction, { principalId: agentId });
+              const failure = new RuntimeFailure(
+                "POLICY_REQUIRED",
+                `Tool ${tool.name} waits for a human approval decision`,
+                false,
+                {
+                  approvalRequestId: request.approvalId,
+                  inputDigest: policyAction.inputDigest,
+                  outcome: "approval_required",
+                  risk: tool.risk,
+                  toolName: tool.name,
+                },
+              );
+              await this.#recordToolFailure(
+                session.id,
+                turn.id,
+                current,
+                call,
+                failure,
+                correlationId,
+              );
+              return {
+                kind: "parked",
+                messages,
+                remainingCalls: calls.slice(index),
+                requestId: request.approvalId,
+                pending: {
+                  requestId: request.approvalId,
+                  toolName: tool.name,
+                  risk: tool.risk,
+                  inputDigest: policyAction.inputDigest,
+                  policyDigest: policyAction.policyDigest,
+                  expiresAt: request.expiresAt,
+                },
+              };
+            }
             const failure = new RuntimeFailure(
               "POLICY_REQUIRED",
               `Tool ${tool.name} requires an approval bound to this exact action`,
@@ -1468,7 +1842,7 @@ class DefaultAgentRuntime implements AgentRuntime {
         content: jsonOutput,
       });
     }
-    return messages;
+    return { kind: "completed", messages };
   }
 
   #toolFailureMessage(call: ToolCall, failure: RuntimeFailure): ModelMessage {

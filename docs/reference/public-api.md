@@ -117,11 +117,51 @@ function digestToolAction(action: {
 ```
 
 `createRuntime({ policy, approvals })` evaluates the policy for each proposed tool
-call before input validation and idempotency. A denial and a missing approval both
-fail the turn with `POLICY_REQUIRED`; `details.outcome` says which case
-(`denied`, `approval_required`, `approval_rejected`) and, for a rejected approval,
-`details.approval` names the reason. `consume()` is one-shot, so the same approval
-can never authorize two effects.
+call before input validation and idempotency. A denial fails the turn with
+`POLICY_REQUIRED`; `details.outcome` says which case (`denied`,
+`approval_rejected`) and, for a rejected approval, `details.approval` names the
+reason. `consume()` is one-shot, so the same approval can never authorize two
+effects.
+
+## Waiting for a human decision
+
+When a `write` or `privileged` call has no matching approval, the turn parks
+instead of failing:
+
+```ts
+interface RunTurnResult {
+  session: Session;            // status: "waiting_input"
+  turn: Turn;                  // status: "waiting_input"
+  output?: JsonValue;
+  usage: Usage;
+  pendingApproval?: PendingApproval;
+}
+
+interface PendingApproval {
+  requestId: string;
+  toolName: string;
+  risk: ToolRisk;
+  inputDigest: string;
+  policyDigest: string;
+  expiresAt: string | null;
+}
+
+resumeTurn(
+  input: { sessionId: SessionId; expectedSessionVersion?: number },
+  options?: { signal?: AbortSignal },
+): Promise<RunTurnResult>;
+```
+
+While a turn is parked, `runTurn` rejects with `INVALID_TRANSITION` (`reason:
+"approval_pending"`) so a new turn cannot bypass the pending decision. A
+trusted principal calls `approvals.decide(requestId, { principalId, approved })`;
+`resumeTurn` then rejects while the decision is pending (no events written),
+cancels the session when it was denied or expired, and otherwise emits
+`input.received`, moves `waiting_input` back to `running` and continues the same
+turn with the same `toolCallId`. The approval is consumed exactly once.
+
+The continuation lives in memory: a process restart loses a parked turn and
+`resumeTurn` fails closed. Durable continuation belongs to the Phase 2 store.
 
 ## Runtime
 

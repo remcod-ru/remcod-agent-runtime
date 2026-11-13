@@ -48,6 +48,8 @@ export type {
   CreateSessionInput,
   EventPage,
   EventQuery,
+  PendingApproval,
+  ResumeTurnInput,
   RunTurnInput,
   RunTurnResult,
   RuntimeConfig,

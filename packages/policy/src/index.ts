@@ -416,6 +416,8 @@ export interface ApprovalLedger {
   decide(approvalId: string, input: DecideApprovalInput): ApprovalRecord;
   /** One-shot, fail-closed consumption bound to the exact action. */
   consume(action: PolicyAction): ApprovalRecord;
+  /** First record for this exact action, or null when none was ever requested. */
+  find(action: PolicyAction): ApprovalRecord | null;
   get(approvalId: string): ApprovalRecord | null;
   list(): readonly ApprovalRecord[];
 }
@@ -629,6 +631,16 @@ export function createApprovalLedger(
     get(approvalId): ApprovalRecord | null {
       const record = records.get(approvalId);
       return record ? cloneRecord(record) : null;
+    },
+
+    find(action): ApprovalRecord | null {
+      const wanted = cloneAction(action);
+      const match = [...records.values()]
+        .filter((record) => sameAction(record.action, wanted))
+        .sort((left, right) =>
+          left.approvalId.localeCompare(right.approvalId),
+        )[0];
+      return match ? cloneRecord(match) : null;
     },
 
     list(): readonly ApprovalRecord[] {

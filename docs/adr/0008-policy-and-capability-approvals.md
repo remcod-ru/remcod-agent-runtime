@@ -47,10 +47,16 @@ Two failure modes had to stay impossible:
 - Side effects are now executable and auditable without giving the model
   authority: authority enters only through the ledger, which lives outside the
   model context.
-- Approvals are in-memory and process-scoped. Restart loses them; a durable store
-  (Phase 2) must persist decisions and their binding before production use.
-- No interactive approval flow yet: an agent cannot park, ask a human and resume.
-  That needs durable continuation, so Phase 6 keeps its place after Phase 2.
+- A side-effecting call without a matching approval no longer fails the run: the
+  turn parks in `waiting_input`, emits `input.requested`, and reports
+  `pendingApproval`. `resumeTurn` continues the same turn and `toolCallId` once a
+  trusted principal has decided; a denied or expired request cancels the session
+  fail-closed.
+- The parked continuation is in-memory and process-scoped. Restart loses it and
+  `resumeTurn` fails closed; a durable store (Phase 2) must persist both the
+  decision and the continuation before production use.
+- Each parked tool call counts one attempt against `maxToolCalls` when proposed
+  and another when resumed, because the resumed round re-enters the tool step.
 - The protocol stays at v1: no new event type and no new error code. A denial and
   a missing approval reuse `POLICY_REQUIRED`, and the machine-readable reason
   travels in `details`, which is already an open JSON value. Old readers keep
