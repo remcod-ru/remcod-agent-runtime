@@ -47,8 +47,7 @@ Two failure modes had to stay impossible:
 5. The ledger can **withdraw** a still-pending request. Cancelling a parked turn
    withdraws its question, and a decision or consumption after that is refused:
    an answer that arrives after nobody waits for it never authorizes work.
-   (This follows the shipped DeepSeek Harness model, where a denial is a tool
-   result and an aborted ask discards late answers.)
+   (A denial is a tool result and an aborted ask discards late answers.)
 
 ## Consequences
 
