@@ -1143,6 +1143,8 @@ class DefaultAgentRuntime implements AgentRuntime {
       }
       if (this.#policy) {
         const policyAction: PolicyAction = {
+          policyVersion: this.#policy.policyVersion,
+          policyDigest: this.#policy.policyDigest,
           sessionId: session.id,
           turnId: turn.id,
           stepId: current.step.id,

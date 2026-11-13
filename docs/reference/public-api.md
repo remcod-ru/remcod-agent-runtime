@@ -92,6 +92,8 @@ implementation. Without a configured policy the runtime executes only `read` and
 
 ```ts
 interface PolicyAction {
+  policyVersion: "1";
+  policyDigest: string; // digest of the exact ruleset
   sessionId: SessionId;
   turnId: TurnId;
   stepId: StepId;

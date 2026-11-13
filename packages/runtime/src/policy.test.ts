@@ -116,6 +116,8 @@ describe("policy integration", () => {
 
     const request = approvals.request(
       {
+        policyVersion: "1",
+        policyDigest: policy.policyDigest,
         sessionId: session.id,
         turnId: createId("TurnId", "turn-pre"),
         stepId: createId("StepId", "step-pre"),
@@ -162,6 +164,8 @@ describe("policy integration", () => {
 
     const request = approvals.request(
       {
+        policyVersion: "1",
+        policyDigest: policy.policyDigest,
         sessionId: session.id,
         turnId: createId("TurnId", "turn-pre"),
         stepId: createId("StepId", "step-pre"),
@@ -262,6 +266,8 @@ describe("policy integration", () => {
     });
     const request = approvals.request(
       {
+        policyVersion: "1",
+        policyDigest: policy.policyDigest,
         sessionId: session.id,
         turnId: createId("TurnId", "turn-pre"),
         stepId: createId("StepId", "step-pre"),
@@ -290,5 +296,66 @@ describe("policy integration", () => {
       },
     });
     expect(executions.count).toBe(1);
+  });
+
+  it("refuses an approval issued under a different ruleset", async () => {
+    const executions = { count: 0 };
+    const tool = writeTool(executions);
+    const approvalPolicy = createPolicyEngine();
+    const runtimePolicy = createPolicyEngine({
+      rules: [
+        {
+          name: "extra-rule",
+          toolNames: ["unrelated.tool"],
+          decision: { outcome: "deny", reason: "unrelated" },
+        },
+      ],
+    });
+    expect(runtimePolicy.policyDigest).not.toBe(approvalPolicy.policyDigest);
+    const approvals = createApprovalLedger();
+    const provider = scriptedProvider([
+      {
+        kind: "tool_calls",
+        calls: [{ id: "call-1", name: tool.name, input: { amount: 10 } }],
+      },
+    ]);
+    const runtime = harness(provider, {
+      tools: [tool],
+      policy: runtimePolicy,
+      approvals,
+    });
+    const session = await runtime.createSession({
+      agentId: createId("AgentId", "agent-1"),
+    });
+
+    const request = approvals.request(
+      {
+        policyVersion: "1",
+        policyDigest: approvalPolicy.policyDigest,
+        sessionId: session.id,
+        turnId: createId("TurnId", "turn-pre"),
+        stepId: createId("StepId", "step-pre"),
+        toolCallId: createId("ToolCallId", "call-pre"),
+        toolName: tool.name,
+        risk: "write",
+        inputDigest: digestToolAction({
+          toolName: tool.name,
+          input: { amount: 10 },
+        }),
+      },
+      { principalId: "principal-1" },
+    );
+    approvals.decide(request.approvalId, {
+      principalId: "principal-1",
+      approved: true,
+    });
+
+    await expect(
+      runtime.runTurn({ sessionId: session.id, input: "create an invoice" }),
+    ).rejects.toMatchObject({
+      code: "POLICY_REQUIRED",
+      details: { outcome: "approval_rejected", approval: "APPROVAL_MISMATCH" },
+    });
+    expect(executions.count).toBe(0);
   });
 });

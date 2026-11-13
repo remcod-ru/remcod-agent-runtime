@@ -9,8 +9,12 @@ import {
   type PolicyAction,
 } from "./index.js";
 
+const defaultEngine = createPolicyEngine();
+
 function action(overrides: Partial<PolicyAction> = {}): PolicyAction {
   return {
+    policyVersion: "1",
+    policyDigest: defaultEngine.policyDigest,
     sessionId: createId("SessionId", "session-1"),
     turnId: createId("TurnId", "turn-1"),
     stepId: createId("StepId", "step-1"),
@@ -86,10 +90,35 @@ describe("createPolicyEngine", () => {
         },
       ],
     });
-    expect(engine.evaluate(action({ toolName: "finance.export" }))).toEqual({
+    expect(
+      engine.evaluate(
+        action({
+          toolName: "finance.export",
+          policyDigest: engine.policyDigest,
+        }),
+      ),
+    ).toEqual({
       outcome: "deny",
       reason: "finance export is forbidden",
     });
+  });
+
+  it("changes its digest when the ruleset changes and refuses a foreign action", () => {
+    const other = createPolicyEngine({
+      rules: [
+        {
+          name: "allow-all-read",
+          toolNames: ["x"],
+          decision: { outcome: "allow" },
+        },
+      ],
+    });
+    expect(other.policyDigest).not.toBe(defaultEngine.policyDigest);
+    expect(() =>
+      defaultEngine.evaluate(
+        action({ toolName: "x", policyDigest: other.policyDigest }),
+      ),
+    ).toThrowError(/different ruleset/);
   });
 
   it("rejects duplicate rule names and empty tool lists", () => {
@@ -216,6 +245,17 @@ describe("createApprovalLedger", () => {
     expect(() =>
       ledger.decide("apv_missing", { principalId: "p", approved: true }),
     ).toThrowError(/Unknown approval/);
+  });
+
+  it("refuses an approval issued under a different policy digest", () => {
+    const ledger = createApprovalLedger({ idFactory: () => "apv_6" });
+    const request = action();
+    ledger.request(request, { principalId: "principal-1" });
+    ledger.decide("apv_6", { principalId: "principal-1", approved: true });
+    const other = createPolicyEngine({ sideEffectDecision: "deny" });
+    expect(() =>
+      ledger.consume(action({ policyDigest: other.policyDigest })),
+    ).toThrowError(/No approval matches this exact action/);
   });
 
   it("requires a trusted principal for requests and decisions", () => {

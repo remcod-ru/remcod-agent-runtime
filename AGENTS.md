@@ -131,11 +131,14 @@ sdk               -> все public packages, zod
   исполняет только `read` и `draft`, а `write`/`privileged` возвращают
   `POLICY_REQUIRED`. С `policy` решение принимает она: `read`/`draft` по умолчанию
   `allow`, `write`/`privileged` — `require_approval` или `deny`.
-- Policy decisions чистые и детерминированные: тот же action даёт тот же вывод.
-  Approval привязан к `sessionId` + `toolName` + sha256 от canonical
-  `{ input, toolName }` и расходуется ровно один раз; чужой input, другой tool,
-  другая session, pending/denied/expired approval и повторное использование
-  падают fail-closed.
+- Policy decisions чистые и детерминированные: тот же action даёт тот же вывод, а
+  `policyDigest` описывает точный ruleset. Approval привязан к `policyVersion` +
+  `policyDigest` + `sessionId` + `toolName` + sha256 от canonical `{ input, toolName }`
+  и расходуется ровно один раз; чужой input, другой tool, другая session, чужой
+  ruleset, pending/denied/expired approval и повторное использование падают
+  fail-closed.
+- `defineTool` валидирует объявленный `risk` в рантайме: неизвестный риск — это
+  `InvalidToolRiskError`, а не «не side-effecting» ветка политики.
 - Ledger — единственный источник «approved». Ни model output, ни turn input не
   могут выдать approval; trusted principal приходит извне runtime.
 - `defineTool` immutable-snapshot'ит definition, валидирует timeout и JSON-output

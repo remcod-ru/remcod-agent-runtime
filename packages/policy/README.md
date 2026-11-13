@@ -12,11 +12,12 @@ place:
 
 - `createPolicyEngine()` maps a `PolicyAction` to `allow`, `deny` or
   `require_approval`. The default is fail-closed: `read` and `draft` run, while
-  `write` and `privileged` always need an approval.
+  `write` and `privileged` always need an approval. The engine exposes the
+  `policyDigest` of its exact ruleset and refuses an action built for another one.
 - `createApprovalLedger()` stores approvals issued by a **trusted principal**
-  (a server-side caller, never the model). An approval is bound to the exact
-  canonical action digest; a different input, tool or session does not match,
-  and a second consumption fails closed.
+  (a server-side caller, never the model). An approval is bound to the policy
+  digest and the exact canonical action digest; a different input, tool, session
+  or ruleset does not match, and a second consumption fails closed.
 - `digestToolAction()` and `canonicalJson()` define that binding deterministically.
 
 ## Public surface

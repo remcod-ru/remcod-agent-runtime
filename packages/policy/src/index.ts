@@ -9,15 +9,18 @@ import {
   type ToolCallId,
   type TurnId,
 } from "@remcod/protocol";
-import type { ToolRisk } from "@remcod/tools";
+import { ToolRiskSchema, type ToolRisk } from "@remcod/tools";
 import { z } from "zod";
+
+export { ToolRiskSchema };
+export type { ToolRisk };
 
 const digestPattern = /^[a-f0-9]{64}$/;
 
-export const ToolRiskSchema = z.enum(["read", "draft", "write", "privileged"]);
-
 export const PolicyActionSchema = z
   .object({
+    policyVersion: z.literal("1"),
+    policyDigest: z.string().regex(digestPattern),
     sessionId: SessionIdSchema,
     turnId: TurnIdSchema,
     stepId: StepIdSchema,
@@ -242,6 +245,9 @@ export interface PolicyConfig {
 }
 
 export interface PolicyEngine {
+  readonly policyVersion: "1";
+  /** Digest of the exact ruleset; an approval issued under another digest never matches. */
+  readonly policyDigest: string;
   evaluate(action: PolicyAction): PolicyDecision;
   readonly rules: readonly PolicyRule[];
 }
@@ -299,6 +305,26 @@ function validateRules(rules: readonly PolicyRule[]): readonly PolicyRule[] {
 }
 
 /**
+ * Digest of the exact ruleset. Two engines built from different documents have
+ * different digests, so an approval issued under one never authorizes an action
+ * evaluated under the other.
+ */
+function policyDocumentJson(
+  rules: readonly PolicyRule[],
+  sideEffectDecision: string,
+): JsonValue {
+  return {
+    policyVersion: "1",
+    rules: rules.map((rule) => ({
+      name: rule.name,
+      toolNames: [...rule.toolNames],
+      decision: { ...rule.decision },
+    })),
+    sideEffectDecision,
+  } as unknown as JsonValue;
+}
+
+/**
  * Builds an immutable policy engine. Evaluation is pure: the same action always
  * yields the same decision, and no decision depends on model output beyond the
  * tool name and risk already declared by the tool definition.
@@ -317,12 +343,24 @@ export function createPolicyEngine(config: PolicyConfig = {}): PolicyEngine {
     );
   }
 
+  const policyDigest = sha256Hex(
+    canonicalJson(policyDocumentJson(rules, sideEffectDecision)),
+  );
+
   const engine: PolicyEngine = {
+    policyVersion: "1",
+    policyDigest,
     rules,
     evaluate(action: PolicyAction): PolicyDecision {
       const parsed = PolicyActionSchema.safeParse(action);
       if (!parsed.success) {
         throw new PolicyError("INVALID_ACTION", "Policy action is not valid");
+      }
+      if (parsed.data.policyDigest !== policyDigest) {
+        throw new PolicyError(
+          "INVALID_ACTION",
+          "Policy action was built for a different ruleset",
+        );
       }
       for (const rule of rules) {
         if (rule.toolNames.includes(parsed.data.toolName)) return rule.decision;
@@ -441,6 +479,8 @@ export function createApprovalLedger(
 
   function sameAction(left: PolicyAction, right: PolicyAction): boolean {
     return (
+      left.policyVersion === right.policyVersion &&
+      left.policyDigest === right.policyDigest &&
       left.sessionId === right.sessionId &&
       left.toolName === right.toolName &&
       left.inputDigest === right.inputDigest

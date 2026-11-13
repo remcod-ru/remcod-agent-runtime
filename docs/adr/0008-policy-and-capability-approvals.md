@@ -27,10 +27,13 @@ Two failure modes had to stay impossible:
    always require an approval unless an explicit rule decides otherwise. Rules are
    immutable, ordered by declaration, and matched by exact tool name.
 3. `createApprovalLedger()` stores approvals issued by a **trusted principal**
-   (a server-side caller). An approval binds to the session, the tool name and
-   the SHA-256 digest of the canonical `{ input, toolName }` pair. `consume()`
-   is one-shot: a second attempt, a different digest, a denied request, a pending
+   (a server-side caller). An approval binds to the policy digest, the session,
+   the tool name and the SHA-256 digest of the canonical `{ input, toolName }`
+   pair, so a changed ruleset invalidates every earlier approval. `consume()` is
+   one-shot: a second attempt, a different digest, a denied request, a pending
    request or an expired one all fail closed with a typed error code.
+   `defineTool` validates the declared risk, so a JavaScript caller cannot invent
+   a risk that a policy would treat as harmless.
 4. `createRuntime({ policy, approvals })` evaluates the policy for each proposed
    tool call before input validation and idempotency. Both a denial and a missing
    approval fail the turn with the existing `POLICY_REQUIRED` code, distinguishing
