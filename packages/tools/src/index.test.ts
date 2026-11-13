@@ -2,6 +2,7 @@ import { z } from "zod";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 import {
+  InvalidToolRiskError,
   InvalidToolTimeoutError,
   UnsupportedToolOutputSchemaError,
   ToolInputValidationError,
@@ -376,5 +377,42 @@ describe("tool risk metadata", () => {
     expect(requiresExplicitPolicy("draft")).toBe(false);
     expect(requiresExplicitPolicy("write")).toBe(true);
     expect(requiresExplicitPolicy("privileged")).toBe(true);
+  });
+
+  it("rejects an unknown risk at definition time instead of treating it as read", () => {
+    let executions = 0;
+    expect(() =>
+      defineTool({
+        name: "admin-action",
+        description: "declared risk is not a published one",
+        inputSchema: z.object({}),
+        outputSchema: z.object({ ok: z.boolean() }),
+        risk: "admin" as never,
+        timeoutMs: 1_000,
+        async execute() {
+          executions += 1;
+          return { ok: true };
+        },
+      }),
+    ).toThrowError(InvalidToolRiskError);
+    expect(executions).toBe(0);
+  });
+
+  it("keeps every declared risk in the frozen snapshot", () => {
+    for (const risk of ["read", "draft", "write", "privileged"] as const) {
+      const tool = defineTool({
+        name: `tool-${risk}`,
+        description: "declared risk",
+        inputSchema: z.object({}),
+        outputSchema: z.object({ ok: z.boolean() }),
+        risk,
+        timeoutMs: 1_000,
+        async execute() {
+          return { ok: true };
+        },
+      });
+      expect(tool.risk).toBe(risk);
+      expect(Object.isFrozen(tool)).toBe(true);
+    }
   });
 });

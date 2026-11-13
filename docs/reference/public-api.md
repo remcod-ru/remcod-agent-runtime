@@ -12,8 +12,10 @@ Most agent authors should import from `@remcod/sdk`:
 import {
   ProviderRegistry,
   ScriptedModel,
+  createApprovalLedger,
   createId,
   createInMemoryRuntimeStore,
+  createPolicyEngine,
   createRuntime,
   defineAgent,
   defineTool,
@@ -22,8 +24,8 @@ import {
 ```
 
 The SDK re-exports selected types for agents, models, protocol records/events,
-runtime/store, transport, scripted testing, and tools. It does not re-export
-package internals or every protocol schema.
+runtime/store, policy decisions and approvals, transport, scripted testing, and
+tools. It does not re-export package internals or every protocol schema.
 
 ## Agent and model contracts
 
@@ -83,7 +85,85 @@ normalized `z.output<OutputSchema>`.
 
 `defineTool` snapshots the definition, rejects invalid timeouts and output schemas
 without a representable JSON output side, and validates input/output around the
-implementation. Phase 1 runtime executes only `read` and `draft` risks.
+implementation. Without a configured policy the runtime executes only `read` and
+`draft` risks; `write` and `privileged` fail with `POLICY_REQUIRED`.
+
+## Policy and approvals
+
+```ts
+interface PolicyAction {
+  policyVersion: "1";
+  policyDigest: string; // digest of the exact ruleset
+  sessionId: SessionId;
+  turnId: TurnId;
+  stepId: StepId;
+  toolCallId: ToolCallId;
+  toolName: string;
+  risk: ToolRisk;
+  inputDigest: string; // sha256 hex of canonical { input, toolName }
+}
+
+type PolicyDecision =
+  | { outcome: "allow" }
+  | { outcome: "deny"; reason: string }
+  | { outcome: "require_approval"; reason: string };
+
+function createPolicyEngine(config?: PolicyConfig): PolicyEngine;
+function createApprovalLedger(options?: ApprovalLedgerOptions): ApprovalLedger;
+function digestToolAction(action: {
+  toolName: string;
+  input: JsonValue;
+}): string;
+```
+
+`createRuntime({ policy, approvals })` evaluates the policy for each proposed tool
+call before input validation and idempotency. A denial is recorded as
+`tool.failed` and returned to the model as a tool result carrying the reason
+(`POLICY_REQUIRED`, `details.outcome: "denied"`), so the turn continues and the
+model can choose another approach; the tool never runs. A missing approval parks
+the turn instead (below). `consume()` is one-shot, so the same approval can never
+authorize two effects, and `withdraw()` retires a pending question so a late
+answer is refused.
+
+## Waiting for a human decision
+
+When a `write` or `privileged` call has no matching approval, the turn parks
+instead of failing:
+
+```ts
+interface RunTurnResult {
+  session: Session;            // status: "waiting_input"
+  turn: Turn;                  // status: "waiting_input"
+  output?: JsonValue;
+  usage: Usage;
+  pendingApproval?: PendingApproval;
+}
+
+interface PendingApproval {
+  requestId: string;
+  toolName: string;
+  risk: ToolRisk;
+  inputDigest: string;
+  policyDigest: string;
+  expiresAt: string | null;
+}
+
+resumeTurn(
+  input: { sessionId: SessionId; expectedSessionVersion?: number },
+  options?: { signal?: AbortSignal },
+): Promise<RunTurnResult>;
+```
+
+While a turn is parked, `runTurn` rejects with `INVALID_TRANSITION` (`reason:
+"approval_pending"`) so a new turn cannot bypass the pending decision. A
+trusted principal calls `approvals.decide(requestId, { principalId, approved })`;
+`resumeTurn` then rejects while the decision is pending (no events written),
+cancels the session when it was denied or expired, and otherwise emits
+`input.received`, moves `waiting_input` back to `running` and continues the same
+turn with the same `toolCallId`. The approval is consumed exactly once.
+
+The continuation lives in memory: a process restart loses a parked turn and
+`resumeTurn` fails closed. Durable continuation belongs to the Phase 2 store.
 
 ## Runtime
 

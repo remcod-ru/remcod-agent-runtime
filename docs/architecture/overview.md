@@ -12,12 +12,13 @@ The current package import graph is acyclic:
 ```text
 protocol:          zod
 tools:             protocol, zod
+policy:            protocol, tools, zod
 core:              protocol, tools, zod
 model-router:      core, protocol
-runtime:           core, model-router, protocol, tools, zod
+runtime:           core, model-router, policy, protocol, tools, zod
 runtime/transport: protocol, runtime
 testing:           model-router, protocol
-sdk:               core, model-router, protocol, runtime, testing, tools, zod
+sdk:               core, model-router, policy, protocol, runtime, testing, tools, zod
 ```
 
 The supported cross-package seams are public package exports; deep source imports
@@ -32,6 +33,7 @@ it.
 | `@remcod/core`              | Agent definition, limits, retry and compaction policies                                          | `defineAgent`, defaults, contract types                                    | Definition normalization                        |
 | `@remcod/model-router`      | Provider selection and normalized model request/response                                         | `ModelProvider`, `ProviderRegistry`, model types                           | Provider map                                    |
 | `@remcod/tools`             | Typed tool definition, validation, timeout, risk classification                                  | `defineTool`, tool types, typed errors                                     | Abort/timeout and validation plumbing           |
+| `@remcod/policy`            | Capability policy decisions, canonical action digest, in-memory approval ledger                  | `createPolicyEngine`, `createApprovalLedger`, `digestToolAction`           | Rule matching and approval state                |
 | `@remcod/runtime`           | Session execution, CAS/event orchestration, in-memory store, pure reducer                        | `createRuntime`, `AgentRuntime`, `RuntimeStore`, typed failures            | Loop state, counters, idempotency orchestration |
 | `@remcod/runtime/transport` | Event serialization and neutral HTTP mapping                                                     | NDJSON encoders and `createRuntimeHttpHandler`                             | Raw URL/query parsing and iterator cleanup      |
 | `@remcod/testing`           | Deterministic provider fixture                                                                   | `ScriptedModel` and its typed script items/errors                          | Script cursor and request journal               |
@@ -44,10 +46,13 @@ it.
 2. `createSession` resolves one agent by ID and appends `session.created`.
 3. `runTurn` assembles bounded context, invokes the selected provider, validates
    any tool calls, and continues until a terminal message or failure.
-4. Session state and events are changed through store CAS/cursor methods.
-5. The internal reducer derives state and counters from events without invoking a
+4. Every proposed tool call passes the configured policy before input validation:
+   a denial or a missing one-shot approval fails the turn with `POLICY_REQUIRED`,
+   whose `details.outcome` names the case.
+5. Session state and events are changed through store CAS/cursor methods.
+6. The internal reducer derives state and counters from events without invoking a
    model or tool.
-6. The transport reads events and encodes NDJSON; disconnecting a consumer closes
+7. The transport reads events and encodes NDJSON; disconnecting a consumer closes
    its iterator but does not cancel or mutate the session.
 
 Provider retries are limited to classified transient model failures. Tool effects

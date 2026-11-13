@@ -48,6 +48,8 @@ export type {
   CreateSessionInput,
   EventPage,
   EventQuery,
+  PendingApproval,
+  ResumeTurnInput,
   RunTurnInput,
   RunTurnResult,
   RuntimeConfig,
@@ -68,6 +70,24 @@ export type {
 
 export { ScriptedModel } from "@remcod/testing";
 export type { ScriptedModelItem } from "@remcod/testing";
+
+export {
+  canonicalJson,
+  createApprovalLedger,
+  createPolicyEngine,
+  digestToolAction,
+  sha256Hex,
+} from "@remcod/policy";
+export type {
+  ApprovalLedger,
+  ApprovalRecord,
+  PolicyAction,
+  PolicyConfig,
+  PolicyDecision,
+  PolicyEngine,
+  PolicyErrorCode,
+  PolicyRule,
+} from "@remcod/policy";
 
 export { defineTool } from "@remcod/tools";
 export type {

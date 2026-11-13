@@ -7,7 +7,23 @@ import type {
 } from "@remcod/protocol";
 import { z } from "zod";
 
-export type ToolRisk = "read" | "draft" | "write" | "privileged";
+export const ToolRiskSchema = z.enum(["read", "draft", "write", "privileged"]);
+
+export type ToolRisk = z.infer<typeof ToolRiskSchema>;
+
+/**
+ * Raised when a tool definition declares a risk outside the published set.
+ * TypeScript alone cannot protect JavaScript callers, and an unknown risk must
+ * never fall through to the "not side-effecting" branch of a policy.
+ */
+export class InvalidToolRiskError extends TypeError {
+  readonly code = "INVALID_TOOL_RISK";
+
+  constructor(readonly risk: unknown) {
+    super("Tool risk must be one of read, draft, write or privileged");
+    this.name = "InvalidToolRiskError";
+  }
+}
 
 export interface ToolExecutionContext {
   readonly signal: AbortSignal;
@@ -180,12 +196,16 @@ export function defineTool<
 export function defineTool<TInput, TOutput>(
   definition: ToolDefinition<TInput, TOutput>,
 ): ToolDefinition<TInput, TOutput> {
+  const parsedRisk = ToolRiskSchema.safeParse(definition.risk);
+  if (!parsedRisk.success) {
+    throw new InvalidToolRiskError(definition.risk);
+  }
   const captured = Object.freeze({
     name: definition.name,
     description: definition.description,
     inputSchema: definition.inputSchema,
     outputSchema: definition.outputSchema,
-    risk: definition.risk,
+    risk: parsedRisk.data,
     timeoutMs: definition.timeoutMs,
     execute: definition.execute,
   }) satisfies ToolDefinition<TInput, TOutput>;

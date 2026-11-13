@@ -258,7 +258,16 @@ function inspectLicenseReport(report, findings) {
 }
 
 function inspectLicenses(scanRoot, findings) {
-  const result = spawnSync("pnpm", ["licenses", "list", "--json"], {
+  // Windows cannot spawn the bare "pnpm" shim without a shell, so the command is
+  // routed through the command interpreter without passing shell:true (which
+  // Node deprecates for unescaped argument lists).
+  const command =
+    process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "pnpm";
+  const args =
+    process.platform === "win32"
+      ? ["/d", "/s", "/c", "pnpm.cmd licenses list --json"]
+      : ["licenses", "list", "--json"];
+  const result = spawnSync(command, args, {
     cwd: scanRoot,
     encoding: "utf8",
   });
